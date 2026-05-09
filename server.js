@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const { AccessToken } = require('livekit-server-sdk');
 
 const app = express();
 app.use(cors());
@@ -10,22 +11,19 @@ app.use(express.json());
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+const LIVEKIT_API_KEY = 'APIBFG5b6JhNrMe';
+const LIVEKIT_API_SECRET = '2ecwdfcz3Im3a37zTr1b3Sv20WFIeJ35c4kw7UsnkNJA';
+
 const channels = {};
 
-// POST /daily-token
-app.post('/daily-token', async (req, res) => {
-  const { room_name } = req.body;
+// POST /livekit-token
+app.post('/livekit-token', async (req, res) => {
+  const { room, username } = req.body;
   try {
-    const response = await fetch('https://api.daily.co/v1/meeting-tokens', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer aecea2bf849f88a8456e0f90ec7f0caa389d0dd1fafba064426e1678db6a777c`
-      },
-      body: JSON.stringify({ properties: { room_name, is_owner: false } })
-    });
-    const data = await response.json();
-    res.json(data);
+    const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, { identity: username });
+    at.addGrant({ roomJoin: true, room, canPublish: true, canSubscribe: true });
+    const token = await at.toJwt();
+    res.json({ token });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
